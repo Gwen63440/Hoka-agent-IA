@@ -16,10 +16,49 @@ EMAIL_RECEIVER = os.environ.get("EMAIL_RECEIVER")  # L'adresse où vous voulez r
 
 client = genai.Client(api_key=GEMINI_API_KEY)
 
-# Liens des comparateurs à surveiller (Exemples Runnea)
+# 2. LIENS DES COMPARATEURS ET SITES À SURVEILLER
+# L'IA va analyser ces pages chaque jour à la recherche du meilleur prix en 41 1/3
 URLS_A_CHERCHER = [
-    {"modele": "Rocket X 3", "url": "https://www.runnea.fr/chaussures-running/hoka/rocket-x-3/1056465/"},
-    {"modele": "Tecton X 3", "url": "https://ledenicheur.fr/product.php?p=12270258"} # Exemple Tecton sur LeDénicheur
+    # =================================================================
+    # RECHERCHES POUR LA HOKA ROCKET X (Modèles 2 et 3)
+    # =================================================================
+    {
+        "modele": "Rocket X 3",
+        "url": "https://www.idealo.fr/desiderata/204123456/hoka-rocket-x-3.html?q=hoka+rocket+x+3"
+    },
+    {
+        "modele": "Rocket X 3",
+        "url": "https://ledenicheur.fr/search?search=Hoka%20Rocket%20X"
+    },
+    {
+        "modele": "Rocket X 3",
+        "url": "https://www.runnea.fr/chaussures-running/hoka/rocket-x-3/1056465/"
+    },
+    {
+        "modele": "Rocket X 3",
+        "url": "https://www.lepape.com/catalogsearch/result/?q=hoka+rocket+x"
+    },
+
+    # =================================================================
+    # RECHERCHES POUR LA HOKA TECTON X (Modèles 2 et 3, Trail)
+    # =================================================================
+    {
+        "modele": "Tecton X 3",
+        "url": "https://www.idealo.fr/desiderata/204123457/hoka-tecton-x-3.html?q=hoka+tecton+x"
+    },
+    {
+        "modele": "Tecton X 3",
+        "url": "https://ledenicheur.fr/search?search=Hoka%20Tecton%20X"
+    },
+    {
+        "modele": "Tecton X 3",
+        "url": "https://www.runnea.fr/chaussures-running/hoka/tecton-x-3/1057000/"
+    },
+    {
+        "modele": "Tecton X 3",
+        "url": "https://www.lepape.com/catalogsearch/result/?q=hoka+tecton+x"
+    }
+]
 ]
 
 # 2. FONCTION DE LECTURE DU SITE
