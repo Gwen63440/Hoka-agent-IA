@@ -10,25 +10,15 @@ from google.genai import types
 
 # 1. CONFIGURATION DES CLÉS (Récupérées de manière sécurisée)
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
-EMAIL_SENDER = os.environ.get("EMAIL_SENDER")      # Votre adresse e-mail d'envoi (ex: Gmail)
-EMAIL_PASSWORD = os.environ.get("EMAIL_PASSWORD")  # Votre mot de passe d'application
-EMAIL_RECEIVER = os.environ.get("EMAIL_RECEIVER")  # L'adresse où vous voulez recevoir l'alerte
+EMAIL_SENDER = os.environ.get("EMAIL_SENDER")      
+EMAIL_PASSWORD = os.environ.get("EMAIL_PASSWORD")  
+EMAIL_RECEIVER = os.environ.get("EMAIL_RECEIVER")  
 
-client = genai.Client(api_key=GEMINI_API_KEY)
-
-# 2. LIENS DES COMPARATEURS ET SITES À SURVEILLER
-# L'IA va analyser ces pages chaque jour à la recherche du meilleur prix en 41 1/3
+# Liens des comparateurs à surveiller
 URLS_A_CHERCHER = [
-    # =================================================================
-    # RECHERCHES POUR LA HOKA ROCKET X (Modèles 2 et 3)
-    # =================================================================
     {
         "modele": "Rocket X 3",
-        "url": "https://www.idealo.fr/desiderata/204123456/hoka-rocket-x-3.html?q=hoka+rocket+x+3"
-    },
-    {
-        "modele": "Rocket X 3",
-        "url": "https://ledenicheur.fr/search?search=Hoka%20Rocket%20X"
+        "url": "https://ledenicheur.fr/search?search=Hoka%20Rocket%20X%203"
     },
     {
         "modele": "Rocket X 3",
@@ -36,19 +26,11 @@ URLS_A_CHERCHER = [
     },
     {
         "modele": "Rocket X 3",
-        "url": "https://www.lepape.com/catalogsearch/result/?q=hoka+rocket+x"
-    },
-
-    # =================================================================
-    # RECHERCHES POUR LA HOKA TECTON X (Modèles 2 et 3, Trail)
-    # =================================================================
-    {
-        "modele": "Tecton X 3",
-        "url": "https://www.idealo.fr/desiderata/204123457/hoka-tecton-x-3.html?q=hoka+tecton+x"
+        "url": "https://www.lepape.com/catalogsearch/result/?q=hoka+rocket+x+3"
     },
     {
         "modele": "Tecton X 3",
-        "url": "https://ledenicheur.fr/search?search=Hoka%20Tecton%20X"
+        "url": "https://ledenicheur.fr/search?search=Hoka%20Tecton%20X%203"
     },
     {
         "modele": "Tecton X 3",
@@ -56,35 +38,35 @@ URLS_A_CHERCHER = [
     },
     {
         "modele": "Tecton X 3",
-        "url": "https://www.lepape.com/catalogsearch/result/?q=hoka+tecton+x"
+        "url": "https://www.lepape.com/catalogsearch/result/?q=hoka+tecton+x+3"
     }
 ]
-]
 
-# 2. FONCTION DE LECTURE DU SITE
 def lire_page(url):
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
     try:
         response = requests.get(url, headers=headers, timeout=15)
+        if response.status_code != 200:
+            print(f"⚠️ Page inaccessible (Code {response.status_code}) pour : {url}")
+            return ""
         soup = BeautifulSoup(response.text, 'html.parser')
-        return soup.get_text(separator=' ', strip=True)[:10000] # On prend les 10000 premiers caractères
+        return soup.get_text(separator=' ', strip=True)[:10000]
     except Exception as e:
-        print(f"Erreur de lecture sur {url} : {e}")
+        print(f"⚠️ Erreur de lecture sur {url} : {e}")
         return ""
 
-# 3. ANALYSE PAR L'IA GEMINI
-def analyser_texte_ia(texte, modele_attendu):
+def analyser_texte_ia(client, texte, modele_attendu):
     prompt = f"""
     Tu es un agent de recherche de bons plans. Analyse ce texte issu d'un comparateur de prix pour la chaussure : {modele_attendu}.
-    Tu dois vérifier si le modèle est disponible dans la taille "41 1/3" (ou 41.33 ou 41 2/3 selon les arrondis des sites marchands listés).
+    Tu dois vérifier si le modèle est disponible dans la taille "41 1/3" (ou 41.33).
     
     Renvoie UNIQUEMENT un objet JSON avec cette structure :
     {{
         "bon_plan_detecte": true ou false,
         "meilleur_prix_trouve": 0.0,
         "taille_disponible": true ou false,
-        "marchand": "Nom de la boutique la moins chère",
-        "resume": "Explication en une phrase"
+        "marchand": "Nom de la boutique",
+        "resume": "Explication courte"
     }}
     """
     try:
@@ -95,13 +77,12 @@ def analyser_texte_ia(texte, modele_attendu):
         )
         return json.loads(response.text)
     except Exception as e:
-        print(f"Erreur Gemini : {e}")
+        print(f"⚠️ Erreur d'analyse Gemini : {e}")
         return None
 
-# 4. ENVOI DE L'ALERTE EMAIL
 def envoyer_alerte_email(modele, prix, marchand, url):
     if not EMAIL_SENDER or not EMAIL_PASSWORD:
-        print("⚠️ Configuration email manquante. Impossible d'envoyer l'alerte.")
+        print("⚠️ Configuration email manquante (SENDER ou PASSWORD).")
         return
 
     msg = MIMEMultipart()
@@ -109,21 +90,7 @@ def envoyer_alerte_email(modele, prix, marchand, url):
     msg['To'] = EMAIL_RECEIVER
     msg['Subject'] = f"🔥 ALERTE PROMO HOKA : {modele} à {prix}€ !"
 
-    corps_mail = f"""
-    Bonjour,
-    
-    Votre agent IA a détecté un bon plan qui correspond à vos critères !
-    
-    - Modèle : HOKA {modele}
-    - Prix : {prix} €
-    - Boutique : {marchand}
-    - Taille demandée : 41 1/3 (Confirmée disponible)
-    
-    Lien pour vérifier et acheter : {url}
-    
-    Bonne course !
-    Votre Robot Hoka
-    """
+    corps_mail = f"Un bon plan a été détecté !\n\n- Modèle : HOKA {modele}\n- Prix : {prix} €\n- Boutique : {marchand}\n- Taille : 41 1/3\n\nLien : {url}"
     msg.attach(MIMEText(corps_mail, 'plain'))
 
     try:
@@ -132,28 +99,38 @@ def envoyer_alerte_email(modele, prix, marchand, url):
         server.login(EMAIL_SENDER, EMAIL_PASSWORD)
         server.sendmail(EMAIL_SENDER, EMAIL_RECEIVER, msg.as_string())
         server.quit()
-        print(f"📧 Email d'alerte envoyé pour la {modele} !")
+        print(f"📧 Email envoyé avec succès pour {modele} !")
     except Exception as e:
-        print(f"❌ Échec de l'envoi de l'email : {e}")
+        print(f"⚠️ Échec de l'envoi de l'email : {e}")
 
-# 5. EXECUTION PRINCIPALE
 def run():
-    print("🚀 Démarrage de la vérification quotidienne...")
+    print("🚀 Démarrage de la vérification...")
+    
+    if not GEMINI_API_KEY:
+        print("❌ ERREUR CRITIQUE : La clé GEMINI_API_KEY est introuvable. Vérifiez vos Secrets GitHub.")
+        exit(1)
+        
+    client = genai.Client(api_key=GEMINI_API_KEY)
+
     for item in URLS_A_CHERCHER:
-        print(f"Analyse en cours pour : {item['modele']}...")
+        print(f"\n🔍 Analyse de : {item['modele']} sur {item['url'][:40]}...")
         texte_site = lire_page(item['url'])
         
-        if not texte_site:
+        if not texte_site or len(texte_site) < 200:
+            print("❌ Contenu de la page vide ou trop court. Passage au site suivant.")
             continue
             
-        resultat = analyser_texte_ia(texte_site, item['modele'])
+        resultat = analyser_texte_ia(client, texte_site, item['modele'])
         
         if resultat:
-            print(f"-> Résultat : {resultat['resume']}")
-            prix = resultat.get('meilleur_prix_trouve', 999)
+            # Sécurité .get() pour éviter les crashs si l'IA oublie une information
+            resume = resultat.get('resume', 'Aucun résumé')
+            prix = resultat.get('meilleur_prix_trouve', 999.0)
             taille_ok = resultat.get('taille_disponible', False)
+            marchand = resultat.get('marchand', 'Inconnu')
             
-            # Application de vos seuils de prix
+            print(f"-> Réponse IA : {resume} (Prix détecté : {prix}€)")
+            
             est_une_affaire = False
             if item['modele'] == "Rocket X 3" and prix <= 170.0 and taille_ok:
                 est_une_affaire = True
@@ -161,9 +138,10 @@ def run():
                 est_une_affaire = True
                 
             if est_une_affaire:
-                envoyer_alerte_email(item['modele'], prix, resultat.get('marchand'), item['url'])
+                print("🚨 CRITÈRES VALIDES ! Envoi de l'e-mail...")
+                envoyer_alerte_email(item['modele'], prix, marchand, item['url'])
             else:
-                print("❌ Pas de promo ou taille indisponible pour le moment.")
+                print("❌ Les critères de prix ou de taille ne sont pas cochés.")
 
 if __name__ == "__main__":
     run()
